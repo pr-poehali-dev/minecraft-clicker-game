@@ -6,7 +6,7 @@ export default {
 		"./pages/**/*.{ts,tsx}",
 		"./components/**/*.{ts,tsx}",
 		"./app/**/*.{ts,tsx}",
-		"./src/**/*.{ts,tsx}",
+		"./src/**/*.{ts,tsx}"
 	],
 	prefix: "",
 	theme: {
@@ -18,7 +18,17 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				sans: ['Rubik', 'system-ui', 'sans-serif'],
+				game: ['Minecraft', 'monospace']
+			},
 			colors: {
+				gold: '#FFD700',
+				brown: '#8B4513',
+				darkBrown: '#228B22',
+				minecraftRed: '#FF6B6B',
+				minecraftGreen: '#4A90E2',
+				minecraftPurple: '#9B59B6',
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
@@ -84,11 +94,27 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'bounce-click': {
+					'0%, 100%': { transform: 'scale(1)' },
+					'50%': { transform: 'scale(0.9)' }
+				},
+				'coin-float': {
+					'0%': { transform: 'translateY(0) scale(1)', opacity: '1' },
+					'100%': { transform: 'translateY(-100px) scale(1.5)', opacity: '0' }
+				},
+				'shake': {
+					'0%, 100%': { transform: 'rotate(0deg)' },
+					'25%': { transform: 'rotate(-5deg)' },
+					'75%': { transform: 'rotate(5deg)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'bounce-click': 'bounce-click 0.3s ease-in-out',
+				'coin-float': 'coin-float 1s ease-out forwards',
+				'shake': 'shake 0.5s ease-in-out'
 			}
 		}
 	},
