@@ -33,6 +33,15 @@ const PRIVILEGES: Item[] = [
   { id: 'god', name: 'Бог', price: 12383, type: 'privilege' },
 ];
 
+const CASINO_BETS = [10000, 50000, 100000, 1000000, 10000000];
+
+const DONAT_CASES = [
+  { id: 'case-1', name: '1 кейс', price: 500, count: 1 },
+  { id: 'case-3', name: '3 кейса', price: 1500, count: 3 },
+  { id: 'case-5', name: '5 кейсов', price: 2000, count: 5 },
+  { id: 'case-10', name: '10 кейсов', price: 4500, count: 10 },
+];
+
 export default function Index() {
   const [gameStarted, setGameStarted] = useState(false);
   const [coins, setCoins] = useState(0);
@@ -45,6 +54,9 @@ export default function Index() {
   const [clickMultiplier, setClickMultiplier] = useState(1);
   const [canClick, setCanClick] = useState(true);
   const [floatingCoins, setFloatingCoins] = useState<{ id: number; x: number; y: number }[]>([]);
+  const [cases, setCases] = useState(0);
+  const [donatCases, setDonatCases] = useState(0);
+  const [isSpinning, setIsSpinning] = useState(false);
 
   useEffect(() => {
     const wood = inventory['wood-sword'] || 0;
@@ -101,6 +113,105 @@ export default function Index() {
     }
     
     toast.success(`Куплено: ${item.name}!`);
+  };
+
+  const playCasino = (bet: number) => {
+    if (coins < bet) {
+      toast.error('Недостаточно монет!');
+      return;
+    }
+
+    setCoins(prev => prev - bet);
+    const win = Math.random() > 0.5;
+
+    setTimeout(() => {
+      if (win) {
+        const winAmount = bet * 2;
+        setCoins(prev => prev + winAmount);
+        toast.success(`🎰 Выигрыш! +${winAmount.toLocaleString()} 💰`);
+      } else {
+        toast.error('🎰 Проигрыш! Попробуй еще раз');
+      }
+    }, 1000);
+  };
+
+  const buyCase = (caseItem: typeof DONAT_CASES[0]) => {
+    if (donatCoins < caseItem.price) {
+      toast.error('Недостаточно доната!');
+      return;
+    }
+
+    setDonatCoins(prev => prev - caseItem.price);
+    setCases(prev => prev + caseItem.count);
+    toast.success(`Куплено кейсов: ${caseItem.count}!`);
+  };
+
+  const buyDonatCase = () => {
+    if (donatCoins < 1000) {
+      toast.error('Нужно 1000 💎 доната!');
+      return;
+    }
+
+    setDonatCoins(prev => prev - 1000);
+    setDonatCases(prev => prev + 1);
+    toast.success('Куплен донат-кейс!');
+  };
+
+  const openCase = (isDonat: boolean = false) => {
+    if (isDonat) {
+      if (donatCases < 1) {
+        toast.error('Нет донат-кейсов!');
+        return;
+      }
+      setDonatCases(prev => prev - 1);
+    } else {
+      if (cases < 1) {
+        toast.error('Нет кейсов!');
+        return;
+      }
+      setCases(prev => prev - 1);
+    }
+
+    setIsSpinning(true);
+
+    setTimeout(() => {
+      setIsSpinning(false);
+      
+      if (isDonat) {
+        const rand = Math.random();
+        let prize;
+        if (rand < 0.01) {
+          prize = PRIVILEGES[6];
+        } else if (rand < 0.02) {
+          prize = PRIVILEGES[5];
+        } else if (rand < 0.03) {
+          prize = PRIVILEGES[4];
+        } else {
+          prize = PRIVILEGES[Math.floor(Math.random() * 4)];
+        }
+        
+        if (prize.type === 'privilege') {
+          setCurrentPrivilege(prize.name);
+        }
+        setInventory(prev => ({
+          ...prev,
+          [prize.id]: (prev[prize.id] || 0) + 1
+        }));
+        toast.success(`🎁 Выпало: ${prize.name}!`);
+      } else {
+        const allItems = [...WEAPONS.slice(0, 3), ...PRIVILEGES.slice(0, 5)];
+        const prize = allItems[Math.floor(Math.random() * allItems.length)];
+        
+        if (prize.type === 'privilege') {
+          setCurrentPrivilege(prize.name);
+        }
+        setInventory(prev => ({
+          ...prev,
+          [prize.id]: (prev[prize.id] || 0) + 1
+        }));
+        toast.success(`🎁 Выпало: ${prize.name}!`);
+      }
+    }, 2000);
   };
 
   if (!gameStarted) {
@@ -196,10 +307,13 @@ export default function Index() {
 
           <Card className="bg-brown/90 border-4 border-darkBrown p-6">
             <Tabs defaultValue="weapons">
-              <TabsList className="w-full bg-darkBrown mb-4">
-                <TabsTrigger value="weapons" className="flex-1">⚔️ Магазин</TabsTrigger>
-                <TabsTrigger value="privileges" className="flex-1">👑 Привилегии</TabsTrigger>
-                <TabsTrigger value="inventory" className="flex-1">🎒 Инвентарь</TabsTrigger>
+              <TabsList className="w-full bg-darkBrown mb-4 grid grid-cols-3 md:grid-cols-6">
+                <TabsTrigger value="weapons">⚔️</TabsTrigger>
+                <TabsTrigger value="privileges">👑</TabsTrigger>
+                <TabsTrigger value="inventory">🎒</TabsTrigger>
+                <TabsTrigger value="casino">🎰</TabsTrigger>
+                <TabsTrigger value="cases">📦</TabsTrigger>
+                <TabsTrigger value="donat">💎</TabsTrigger>
               </TabsList>
 
               <TabsContent value="weapons" className="space-y-2 max-h-96 overflow-y-auto">
@@ -261,6 +375,98 @@ export default function Index() {
                     );
                   })
                 )}
+              </TabsContent>
+
+              <TabsContent value="casino" className="space-y-4">
+                <div className="text-center text-gold font-bold text-xl mb-4">🎰 КАЗИНО 🎰</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {CASINO_BETS.map(bet => (
+                    <Button
+                      key={bet}
+                      onClick={() => playCasino(bet)}
+                      disabled={coins < bet}
+                      className="bg-minecraftRed hover:bg-red-700 text-white font-bold border-2 border-red-900 py-6"
+                    >
+                      <div>
+                        <div className="text-lg">Ставка</div>
+                        <div className="text-sm">{bet.toLocaleString()} 💰</div>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+                <div className="text-white/60 text-sm text-center mt-4">
+                  Шанс выигрыша 50% • Выигрыш x2
+                </div>
+              </TabsContent>
+
+              <TabsContent value="cases" className="space-y-4">
+                <div className="text-center">
+                  <div className="text-gold font-bold text-xl mb-2">📦 КЕЙСЫ 📦</div>
+                  <div className="text-white mb-4">У вас: {cases} кейсов</div>
+                  
+                  <Button
+                    onClick={() => openCase(false)}
+                    disabled={cases < 1 || isSpinning}
+                    className="bg-gold hover:bg-yellow-600 text-brown font-bold text-lg px-8 py-6 border-4 border-brown mb-4"
+                  >
+                    {isSpinning ? '🎁 Открываем...' : '🎁 Открыть кейс'}
+                  </Button>
+                </div>
+
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {DONAT_CASES.map(caseItem => (
+                    <Card key={caseItem.id} className="bg-card/50 p-3 flex items-center justify-between">
+                      <div className="text-white">
+                        <div className="font-bold">{caseItem.name}</div>
+                        <div className="text-sm text-minecraftPurple">{caseItem.price} 💎</div>
+                      </div>
+                      <Button
+                        onClick={() => buyCase(caseItem)}
+                        disabled={donatCoins < caseItem.price}
+                        className="bg-minecraftPurple hover:bg-purple-700 text-white font-bold"
+                      >
+                        Купить
+                      </Button>
+                    </Card>
+                  ))}
+                </div>
+                <div className="text-white/60 text-xs text-center pt-2">
+                  Выпадают предметы и привилегии (кроме Бога, Гидры, Читера)
+                </div>
+              </TabsContent>
+
+              <TabsContent value="donat" className="space-y-4">
+                <div className="text-center">
+                  <div className="text-minecraftPurple font-bold text-xl mb-2">💎 ДОНАТ КЕЙС 💎</div>
+                  <div className="text-white mb-4">У вас: {donatCases} донат-кейсов</div>
+                  
+                  <Button
+                    onClick={() => openCase(true)}
+                    disabled={donatCases < 1 || isSpinning}
+                    className="bg-minecraftPurple hover:bg-purple-700 text-white font-bold text-lg px-8 py-6 border-4 border-purple-900 mb-4"
+                  >
+                    {isSpinning ? '✨ Открываем...' : '✨ Открыть донат-кейс'}
+                  </Button>
+
+                  <Card className="bg-card/50 p-4 mt-4">
+                    <div className="text-white">
+                      <div className="font-bold mb-2">Купить донат-кейс</div>
+                      <div className="text-sm text-minecraftPurple mb-3">1000 💎 доната</div>
+                      <Button
+                        onClick={buyDonatCase}
+                        disabled={donatCoins < 1000}
+                        className="bg-gold hover:bg-yellow-600 text-brown font-bold w-full"
+                      >
+                        Купить за 1000 💎
+                      </Button>
+                    </div>
+                  </Card>
+                </div>
+
+                <div className="text-white/60 text-xs text-center pt-2">
+                  💎 Все привилегии от Нуба до Бога<br/>
+                  🎯 Бог/Гидра/Хакер: 1% шанс каждый
+                </div>
               </TabsContent>
             </Tabs>
           </Card>
