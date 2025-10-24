@@ -42,12 +42,21 @@ const DONAT_CASES = [
   { id: 'case-10', name: '10 кейсов', price: 4500, count: 10 },
 ];
 
+const generateRandomNickname = () => {
+  const prefixes = ['Pro', 'Epic', 'Mega', 'Super', 'Ultra', 'Dark', 'Shadow', 'Gold', 'Diamond', 'Fire'];
+  const suffixes = ['Gamer', 'Player', 'Master', 'King', 'Legend', 'Hero', 'Warrior', 'Hunter', 'Killer', 'Pro'];
+  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+  const number = Math.floor(Math.random() * 9999);
+  return `${prefix}${suffix}${number}`;
+};
+
 export default function Index() {
   const [gameStarted, setGameStarted] = useState(false);
   const [coins, setCoins] = useState(0);
   const [donatCoins, setDonatCoins] = useState(0);
   const [clicks, setClicks] = useState(0);
-  const [nickname] = useState('KosmoCat');
+  const [nickname] = useState(generateRandomNickname());
   const [clan] = useState('⚔️ Легенды');
   const [inventory, setInventory] = useState<Inventory>({});
   const [currentPrivilege, setCurrentPrivilege] = useState('Выживший');
@@ -57,6 +66,11 @@ export default function Index() {
   const [cases, setCases] = useState(0);
   const [donatCases, setDonatCases] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminLogin, setAdminLogin] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [marketItems, setMarketItems] = useState<Array<{id: string; itemId: string; itemName: string; price: number; seller: string}>>([]);
 
   useEffect(() => {
     const wood = inventory['wood-sword'] || 0;
@@ -71,7 +85,8 @@ export default function Index() {
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!canClick) return;
     
-    const earned = 1 * clickMultiplier;
+    const randomCoins = Math.floor(Math.random() * 2000) + 1;
+    const earned = randomCoins * clickMultiplier;
     setCoins(prev => prev + earned);
     setClicks(prev => prev + 1);
     
@@ -214,6 +229,102 @@ export default function Index() {
     }, 2000);
   };
 
+  const adminLogin_func = () => {
+    if (adminLogin === 'KosmoCat' && adminPassword === 'KosmoCat') {
+      setIsAdmin(true);
+      setShowAdminPanel(false);
+      toast.success('Вход в админ-панель выполнен!');
+    } else {
+      toast.error('Неверный логин или пароль!');
+    }
+  };
+
+  const adminGiveItem = (type: 'coins' | 'donat' | 'cases' | 'donatCases' | 'privilege' | 'weapon', amount?: number, itemId?: string) => {
+    if (!isAdmin) return;
+
+    switch (type) {
+      case 'coins':
+        setCoins(prev => prev + (amount || 1000));
+        toast.success(`Выдано ${amount} монет!`);
+        break;
+      case 'donat':
+        setDonatCoins(prev => prev + (amount || 100));
+        toast.success(`Выдано ${amount} доната!`);
+        break;
+      case 'cases':
+        setCases(prev => prev + (amount || 1));
+        toast.success(`Выдано ${amount} кейсов!`);
+        break;
+      case 'donatCases':
+        setDonatCases(prev => prev + (amount || 1));
+        toast.success(`Выдано ${amount} донат-кейсов!`);
+        break;
+      case 'privilege':
+        if (itemId) {
+          const priv = PRIVILEGES.find(p => p.id === itemId);
+          if (priv) {
+            setCurrentPrivilege(priv.name);
+            setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] || 0) + 1 }));
+            toast.success(`Выдана привилегия: ${priv.name}!`);
+          }
+        }
+        break;
+      case 'weapon':
+        if (itemId) {
+          const weapon = WEAPONS.find(w => w.id === itemId);
+          if (weapon) {
+            setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] || 0) + (amount || 1) }));
+            toast.success(`Выдано оружие: ${weapon.name} x${amount}!`);
+          }
+        }
+        break;
+    }
+  };
+
+  const sellToMarket = (itemId: string, price: number) => {
+    if (!inventory[itemId] || inventory[itemId] < 1) {
+      toast.error('У вас нет этого предмета!');
+      return;
+    }
+
+    const item = [...WEAPONS, ...PRIVILEGES].find(i => i.id === itemId);
+    if (!item) return;
+
+    setInventory(prev => ({
+      ...prev,
+      [itemId]: prev[itemId] - 1
+    }));
+
+    setMarketItems(prev => [...prev, {
+      id: Date.now().toString(),
+      itemId,
+      itemName: item.name,
+      price,
+      seller: nickname
+    }]);
+
+    toast.success(`Предмет выставлен на рынок!`);
+  };
+
+  const buyFromMarket = (marketItemId: string) => {
+    const marketItem = marketItems.find(m => m.id === marketItemId);
+    if (!marketItem) return;
+
+    if (coins < marketItem.price) {
+      toast.error('Недостаточно монет!');
+      return;
+    }
+
+    setCoins(prev => prev - marketItem.price);
+    setInventory(prev => ({
+      ...prev,
+      [marketItem.itemId]: (prev[marketItem.itemId] || 0) + 1
+    }));
+
+    setMarketItems(prev => prev.filter(m => m.id !== marketItemId));
+    toast.success(`Куплено: ${marketItem.itemName}!`);
+  };
+
   if (!gameStarted) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-green-900 via-green-800 to-green-900 p-4">
@@ -307,13 +418,15 @@ export default function Index() {
 
           <Card className="bg-brown/90 border-4 border-darkBrown p-6">
             <Tabs defaultValue="weapons">
-              <TabsList className="w-full bg-darkBrown mb-4 grid grid-cols-3 md:grid-cols-6">
+              <TabsList className="w-full bg-darkBrown mb-4 grid grid-cols-4 md:grid-cols-8 text-xs">
                 <TabsTrigger value="weapons">⚔️</TabsTrigger>
                 <TabsTrigger value="privileges">👑</TabsTrigger>
                 <TabsTrigger value="inventory">🎒</TabsTrigger>
                 <TabsTrigger value="casino">🎰</TabsTrigger>
                 <TabsTrigger value="cases">📦</TabsTrigger>
                 <TabsTrigger value="donat">💎</TabsTrigger>
+                <TabsTrigger value="market">🏪</TabsTrigger>
+                {isAdmin && <TabsTrigger value="admin">🔧</TabsTrigger>}
               </TabsList>
 
               <TabsContent value="weapons" className="space-y-2 max-h-96 overflow-y-auto">
@@ -365,11 +478,38 @@ export default function Index() {
                 ) : (
                   Object.entries(inventory).map(([id, count]) => {
                     const item = [...WEAPONS, ...PRIVILEGES].find(i => i.id === id);
+                    if (count < 1) return null;
                     return (
-                      <Card key={id} className="bg-card/50 p-3 flex items-center justify-between">
-                        <div className="text-white">
-                          <div className="font-bold">{item?.name}</div>
-                          <div className="text-sm text-gold">Количество: {count}</div>
+                      <Card key={id} className="bg-card/50 p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-white">
+                            <div className="font-bold">{item?.name}</div>
+                            <div className="text-sm text-gold">Количество: {count}</div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <input 
+                            type="number" 
+                            placeholder="Цена" 
+                            className="flex-1 bg-brown/50 text-white px-2 py-1 rounded border border-gold"
+                            id={`price-${id}`}
+                            min="1"
+                          />
+                          <Button
+                            onClick={() => {
+                              const priceInput = document.getElementById(`price-${id}`) as HTMLInputElement;
+                              const price = parseInt(priceInput?.value || '0');
+                              if (price > 0) {
+                                sellToMarket(id, price);
+                                priceInput.value = '';
+                              } else {
+                                toast.error('Укажите цену!');
+                              }
+                            }}
+                            className="bg-minecraftGreen hover:bg-green-700 text-white font-bold text-sm"
+                          >
+                            Продать
+                          </Button>
                         </div>
                       </Card>
                     );
@@ -468,6 +608,139 @@ export default function Index() {
                   🎯 Бог/Гидра/Хакер: 1% шанс каждый
                 </div>
               </TabsContent>
+
+              <TabsContent value="market" className="space-y-4">
+                <div className="text-center text-gold font-bold text-xl mb-4">🏪 РЫНОК 🏪</div>
+                
+                {marketItems.length === 0 ? (
+                  <div className="text-white/60 text-center py-8">
+                    На рынке пока нет товаров
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {marketItems.map(marketItem => (
+                      <Card key={marketItem.id} className="bg-card/50 p-3 flex items-center justify-between">
+                        <div className="text-white">
+                          <div className="font-bold">{marketItem.itemName}</div>
+                          <div className="text-sm text-gold">{marketItem.price.toLocaleString()} 💰</div>
+                          <div className="text-xs text-white/60">Продавец: {marketItem.seller}</div>
+                        </div>
+                        <Button
+                          onClick={() => buyFromMarket(marketItem.id)}
+                          disabled={coins < marketItem.price || marketItem.seller === nickname}
+                          className="bg-minecraftGreen hover:bg-green-700 text-white font-bold"
+                        >
+                          {marketItem.seller === nickname ? 'Ваш' : 'Купить'}
+                        </Button>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+                
+                <div className="text-white/60 text-xs text-center pt-2">
+                  Продавайте предметы из инвентаря и покупайте у других игроков
+                </div>
+              </TabsContent>
+
+              {isAdmin && (
+                <TabsContent value="admin" className="space-y-4">
+                  <div className="text-center text-minecraftRed font-bold text-xl mb-4">🔧 АДМИН ПАНЕЛЬ 🔧</div>
+                  
+                  <div className="space-y-3">
+                    <Card className="bg-card/50 p-3">
+                      <div className="text-white font-bold mb-2">Выдать монеты</div>
+                      <div className="flex gap-2">
+                        <input 
+                          type="number" 
+                          placeholder="Количество" 
+                          className="flex-1 bg-brown/50 text-white px-2 py-1 rounded border border-gold"
+                          id="admin-coins"
+                        />
+                        <Button
+                          onClick={() => {
+                            const input = document.getElementById('admin-coins') as HTMLInputElement;
+                            adminGiveItem('coins', parseInt(input.value || '1000'));
+                            input.value = '';
+                          }}
+                          className="bg-gold hover:bg-yellow-600 text-brown font-bold"
+                        >
+                          Выдать
+                        </Button>
+                      </div>
+                    </Card>
+
+                    <Card className="bg-card/50 p-3">
+                      <div className="text-white font-bold mb-2">Выдать донат</div>
+                      <div className="flex gap-2">
+                        <input 
+                          type="number" 
+                          placeholder="Количество" 
+                          className="flex-1 bg-brown/50 text-white px-2 py-1 rounded border border-gold"
+                          id="admin-donat"
+                        />
+                        <Button
+                          onClick={() => {
+                            const input = document.getElementById('admin-donat') as HTMLInputElement;
+                            adminGiveItem('donat', parseInt(input.value || '100'));
+                            input.value = '';
+                          }}
+                          className="bg-minecraftPurple hover:bg-purple-700 text-white font-bold"
+                        >
+                          Выдать
+                        </Button>
+                      </div>
+                    </Card>
+
+                    <Card className="bg-card/50 p-3">
+                      <div className="text-white font-bold mb-2">Выдать кейсы</div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => adminGiveItem('cases', 10)}
+                          className="flex-1 bg-minecraftGreen hover:bg-green-700 text-white"
+                        >
+                          +10 Кейсов
+                        </Button>
+                        <Button
+                          onClick={() => adminGiveItem('donatCases', 5)}
+                          className="flex-1 bg-minecraftPurple hover:bg-purple-700 text-white"
+                        >
+                          +5 Донат-кейсов
+                        </Button>
+                      </div>
+                    </Card>
+
+                    <Card className="bg-card/50 p-3">
+                      <div className="text-white font-bold mb-2">Выдать привилегию</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {PRIVILEGES.map(priv => (
+                          <Button
+                            key={priv.id}
+                            onClick={() => adminGiveItem('privilege', 1, priv.id)}
+                            className="bg-minecraftPurple hover:bg-purple-700 text-white text-xs"
+                          >
+                            {priv.name}
+                          </Button>
+                        ))}
+                      </div>
+                    </Card>
+
+                    <Card className="bg-card/50 p-3">
+                      <div className="text-white font-bold mb-2">Выдать оружие</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {WEAPONS.map(weapon => (
+                          <Button
+                            key={weapon.id}
+                            onClick={() => adminGiveItem('weapon', 1, weapon.id)}
+                            className="bg-gold hover:bg-yellow-600 text-brown text-xs"
+                          >
+                            {weapon.name}
+                          </Button>
+                        ))}
+                      </div>
+                    </Card>
+                  </div>
+                </TabsContent>
+              )}
             </Tabs>
           </Card>
         </div>
@@ -476,11 +749,19 @@ export default function Index() {
           <div className="text-white text-center space-y-2">
             <div className="flex justify-center gap-4">
               <Button 
-                onClick={() => window.open('https://t.me/+QgiLIa1gFRY4Y2Iy', '_blank')}
+                onClick={() => window.open('https://t.me/av7272g', '_blank')}
                 className="bg-minecraftGreen hover:bg-blue-600 text-white font-bold"
               >
                 📱 Подписаться ТГК
               </Button>
+              {!isAdmin && (
+                <Button 
+                  onClick={() => setShowAdminPanel(true)}
+                  className="bg-minecraftRed hover:bg-red-700 text-white font-bold"
+                >
+                  🔧 Админ
+                </Button>
+              )}
               <Button 
                 onClick={() => {
                   navigator.clipboard.writeText('https://MINECRAFTCLICERBOT');
@@ -499,6 +780,63 @@ export default function Index() {
           </div>
         </Card>
       </div>
+
+      {showAdminPanel && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <Card className="bg-brown border-4 border-darkBrown p-6 max-w-md w-full">
+            <div className="text-center">
+              <div className="text-gold font-bold text-2xl mb-4">🔧 ВХОД В АДМИН ПАНЕЛЬ</div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-white text-sm block mb-1">Логин</label>
+                  <input 
+                    type="text" 
+                    value={adminLogin}
+                    onChange={(e) => setAdminLogin(e.target.value)}
+                    placeholder="Введите логин"
+                    className="w-full bg-brown/50 text-white px-3 py-2 rounded border-2 border-gold"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-white text-sm block mb-1">Пароль</label>
+                  <input 
+                    type="password" 
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    placeholder="Введите пароль"
+                    className="w-full bg-brown/50 text-white px-3 py-2 rounded border-2 border-gold"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={adminLogin_func}
+                    className="flex-1 bg-gold hover:bg-yellow-600 text-brown font-bold"
+                  >
+                    Войти
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowAdminPanel(false);
+                      setAdminLogin('');
+                      setAdminPassword('');
+                    }}
+                    className="flex-1 bg-minecraftRed hover:bg-red-700 text-white font-bold"
+                  >
+                    Отмена
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="text-white/60 text-xs mt-4">
+                Логин и пароль: KosmoCat
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
