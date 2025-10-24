@@ -51,12 +51,58 @@ const generateRandomNickname = () => {
   return `${prefix}${suffix}${number}`;
 };
 
+interface UserAccount {
+  email: string;
+  password: string;
+  nickname: string;
+  coins: number;
+  donatCoins: number;
+  clicks: number;
+  inventory: Inventory;
+  privilege: string;
+  cases: number;
+  donatCases: number;
+}
+
+const loadGameState = (email: string): UserAccount | null => {
+  const saved = localStorage.getItem(`minecraft_clicker_${email}`);
+  return saved ? JSON.parse(saved) : null;
+};
+
+const saveGameState = (email: string, state: UserAccount) => {
+  localStorage.setItem(`minecraft_clicker_${email}`, JSON.stringify(state));
+};
+
+const loadAllAccounts = (): UserAccount[] => {
+  const saved = localStorage.getItem('minecraft_clicker_accounts');
+  return saved ? JSON.parse(saved) : [];
+};
+
+const saveAccount = (account: UserAccount) => {
+  const accounts = loadAllAccounts();
+  const index = accounts.findIndex(a => a.email === account.email);
+  if (index >= 0) {
+    accounts[index] = account;
+  } else {
+    accounts.push(account);
+  }
+  localStorage.setItem('minecraft_clicker_accounts', JSON.stringify(accounts));
+};
+
 export default function Index() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentEmail, setCurrentEmail] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [showRegister, setShowRegister] = useState(false);
+  
   const [gameStarted, setGameStarted] = useState(false);
   const [coins, setCoins] = useState(0);
   const [donatCoins, setDonatCoins] = useState(0);
   const [clicks, setClicks] = useState(0);
-  const [nickname] = useState(generateRandomNickname());
+  const [nickname, setNickname] = useState(generateRandomNickname());
   const [clan] = useState('⚔️ Легенды');
   const [inventory, setInventory] = useState<Inventory>({});
   const [currentPrivilege, setCurrentPrivilege] = useState('Выживший');
@@ -71,6 +117,7 @@ export default function Index() {
   const [adminPassword, setAdminPassword] = useState('');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [marketItems, setMarketItems] = useState<Array<{id: string; itemId: string; itemName: string; price: number; seller: string}>>([]);
+  const [adminGiveEmail, setAdminGiveEmail] = useState('');
 
   useEffect(() => {
     const wood = inventory['wood-sword'] || 0;
@@ -81,6 +128,24 @@ export default function Index() {
     const mult = 1 + (wood * 1) + (iron * 2) + (netherite * 5) + (god * 25);
     setClickMultiplier(mult);
   }, [inventory]);
+
+  useEffect(() => {
+    if (isLoggedIn && currentEmail) {
+      const state: UserAccount = {
+        email: currentEmail,
+        password: '',
+        nickname,
+        coins,
+        donatCoins,
+        clicks,
+        inventory,
+        privilege: currentPrivilege,
+        cases,
+        donatCases
+      };
+      saveGameState(currentEmail, state);
+    }
+  }, [isLoggedIn, currentEmail, nickname, coins, donatCoins, clicks, inventory, currentPrivilege, cases, donatCases]);
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!canClick) return;
@@ -229,43 +294,115 @@ export default function Index() {
     }, 2000);
   };
 
+  const handleLogin = () => {
+    const accounts = loadAllAccounts();
+    const account = accounts.find(a => a.email === loginEmail && a.password === loginPassword);
+    
+    if (account) {
+      setCurrentEmail(loginEmail);
+      setIsLoggedIn(true);
+      setNickname(account.nickname);
+      setCoins(account.coins);
+      setDonatCoins(account.donatCoins);
+      setClicks(account.clicks);
+      setInventory(account.inventory);
+      setCurrentPrivilege(account.privilege);
+      setCases(account.cases);
+      setDonatCases(account.donatCases);
+      toast.success('Вход выполнен!');
+    } else {
+      toast.error('Неверный email или пароль!');
+    }
+  };
+
+  const handleRegister = () => {
+    const accounts = loadAllAccounts();
+    if (accounts.find(a => a.email === registerEmail)) {
+      toast.error('Аккаунт с таким email уже существует!');
+      return;
+    }
+
+    const newAccount: UserAccount = {
+      email: registerEmail,
+      password: registerPassword,
+      nickname: generateRandomNickname(),
+      coins: 0,
+      donatCoins: 0,
+      clicks: 0,
+      inventory: {},
+      privilege: 'Выживший',
+      cases: 0,
+      donatCases: 0
+    };
+
+    saveAccount(newAccount);
+    toast.success('Аккаунт создан! Теперь войдите.');
+    setShowRegister(false);
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentEmail('');
+    setGameStarted(false);
+    toast.success('Вы вышли из аккаунта');
+  };
+
   const adminLogin_func = () => {
-    if (adminLogin === 'KosmoCat' && adminPassword === 'KosmoCat') {
+    if (adminLogin === 'admin@gmail.com' && adminPassword === 'KosmoCat') {
       setIsAdmin(true);
       setShowAdminPanel(false);
       toast.success('Вход в админ-панель выполнен!');
     } else {
-      toast.error('Неверный логин или пароль!');
+      toast.error('Неверный email или пароль!');
     }
   };
 
   const adminGiveItem = (type: 'coins' | 'donat' | 'cases' | 'donatCases' | 'privilege' | 'weapon', amount?: number, itemId?: string) => {
     if (!isAdmin) return;
 
+    const targetEmail = adminGiveEmail || currentEmail;
+    const accounts = loadAllAccounts();
+    const accountIndex = accounts.findIndex(a => a.email === targetEmail);
+    
+    if (accountIndex < 0) {
+      toast.error('Аккаунт не найден!');
+      return;
+    }
+
+    const account = accounts[accountIndex];
+
     switch (type) {
       case 'coins':
-        setCoins(prev => prev + (amount || 1000));
-        toast.success(`Выдано ${amount} монет!`);
+        account.coins += (amount || 1000);
+        if (targetEmail === currentEmail) setCoins(account.coins);
+        toast.success(`Выдано ${amount} монет для ${targetEmail}!`);
         break;
       case 'donat':
-        setDonatCoins(prev => prev + (amount || 100));
-        toast.success(`Выдано ${amount} доната!`);
+        account.donatCoins += (amount || 100);
+        if (targetEmail === currentEmail) setDonatCoins(account.donatCoins);
+        toast.success(`Выдано ${amount} доната для ${targetEmail}!`);
         break;
       case 'cases':
-        setCases(prev => prev + (amount || 1));
-        toast.success(`Выдано ${amount} кейсов!`);
+        account.cases += (amount || 1);
+        if (targetEmail === currentEmail) setCases(account.cases);
+        toast.success(`Выдано ${amount} кейсов для ${targetEmail}!`);
         break;
       case 'donatCases':
-        setDonatCases(prev => prev + (amount || 1));
-        toast.success(`Выдано ${amount} донат-кейсов!`);
+        account.donatCases += (amount || 1);
+        if (targetEmail === currentEmail) setDonatCases(account.donatCases);
+        toast.success(`Выдано ${amount} донат-кейсов для ${targetEmail}!`);
         break;
       case 'privilege':
         if (itemId) {
           const priv = PRIVILEGES.find(p => p.id === itemId);
           if (priv) {
-            setCurrentPrivilege(priv.name);
-            setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] || 0) + 1 }));
-            toast.success(`Выдана привилегия: ${priv.name}!`);
+            account.privilege = priv.name;
+            account.inventory[itemId] = (account.inventory[itemId] || 0) + 1;
+            if (targetEmail === currentEmail) {
+              setCurrentPrivilege(priv.name);
+              setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] || 0) + 1 }));
+            }
+            toast.success(`Выдана привилегия: ${priv.name} для ${targetEmail}!`);
           }
         }
         break;
@@ -273,12 +410,17 @@ export default function Index() {
         if (itemId) {
           const weapon = WEAPONS.find(w => w.id === itemId);
           if (weapon) {
-            setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] || 0) + (amount || 1) }));
-            toast.success(`Выдано оружие: ${weapon.name} x${amount}!`);
+            account.inventory[itemId] = (account.inventory[itemId] || 0) + (amount || 1);
+            if (targetEmail === currentEmail) {
+              setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] || 0) + (amount || 1) }));
+            }
+            toast.success(`Выдано оружие: ${weapon.name} x${amount} для ${targetEmail}!`);
           }
         }
         break;
     }
+
+    saveAccount(account);
   };
 
   const sellToMarket = (itemId: string, price: number) => {
@@ -324,6 +466,137 @@ export default function Index() {
     setMarketItems(prev => prev.filter(m => m.id !== marketItemId));
     toast.success(`Куплено: ${marketItem.itemName}!`);
   };
+
+  const sellAllInventory = () => {
+    let totalEarned = 0;
+    const itemsToSell = Object.entries(inventory).filter(([_, count]) => count > 0);
+    
+    if (itemsToSell.length === 0) {
+      toast.error('Инвентарь пуст!');
+      return;
+    }
+
+    itemsToSell.forEach(([itemId, count]) => {
+      const item = [...WEAPONS, ...PRIVILEGES].find(i => i.id === itemId);
+      if (item && item.price > 0) {
+        totalEarned += Math.floor(item.price * 0.5) * count;
+      }
+    });
+
+    setInventory({});
+    setCoins(prev => prev + totalEarned);
+    toast.success(`Продано все предметы за ${totalEarned.toLocaleString()} 💰!`);
+  };
+
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-green-900 via-green-800 to-green-900 p-4">
+        <h1 className="text-5xl font-bold mb-8 text-center">
+          <span className="text-gold">MINECRAFT</span>{' '}
+          <span className="text-minecraftRed">C</span>
+          <span className="text-minecraftGreen">L</span>
+          <span className="text-minecraftPurple">I</span>
+          <span className="text-gold">C</span>
+          <span className="text-minecraftRed">K</span>
+          <span className="text-minecraftGreen">E</span>
+          <span className="text-minecraftPurple">R</span>
+        </h1>
+
+        <Card className="bg-brown border-4 border-darkBrown p-6 max-w-md w-full">
+          {!showRegister ? (
+            <div className="space-y-4">
+              <div className="text-center text-gold font-bold text-2xl mb-4">🔐 ВХОД</div>
+              
+              <div>
+                <label className="text-white text-sm block mb-1">Email</label>
+                <input 
+                  type="email" 
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  placeholder="Введите email"
+                  className="w-full bg-brown/50 text-white px-3 py-2 rounded border-2 border-gold"
+                />
+              </div>
+              
+              <div>
+                <label className="text-white text-sm block mb-1">Пароль</label>
+                <input 
+                  type="password" 
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="Введите пароль"
+                  onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                  className="w-full bg-brown/50 text-white px-3 py-2 rounded border-2 border-gold"
+                />
+              </div>
+
+              <Button
+                onClick={handleLogin}
+                className="w-full bg-gold hover:bg-yellow-600 text-brown font-bold text-lg py-6"
+              >
+                ⚡ ВОЙТИ
+              </Button>
+
+              <div className="text-center">
+                <button
+                  onClick={() => setShowRegister(true)}
+                  className="text-minecraftGreen hover:text-green-400 text-sm underline"
+                >
+                  Нет аккаунта? Зарегистрироваться
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="text-center text-gold font-bold text-2xl mb-4">📝 РЕГИСТРАЦИЯ</div>
+              
+              <div>
+                <label className="text-white text-sm block mb-1">Email</label>
+                <input 
+                  type="email" 
+                  value={registerEmail}
+                  onChange={(e) => setRegisterEmail(e.target.value)}
+                  placeholder="Введите email"
+                  className="w-full bg-brown/50 text-white px-3 py-2 rounded border-2 border-gold"
+                />
+              </div>
+              
+              <div>
+                <label className="text-white text-sm block mb-1">Пароль</label>
+                <input 
+                  type="password" 
+                  value={registerPassword}
+                  onChange={(e) => setRegisterPassword(e.target.value)}
+                  placeholder="Создайте пароль"
+                  className="w-full bg-brown/50 text-white px-3 py-2 rounded border-2 border-gold"
+                />
+              </div>
+
+              <Button
+                onClick={handleRegister}
+                className="w-full bg-minecraftGreen hover:bg-green-700 text-white font-bold text-lg py-6"
+              >
+                ✅ СОЗДАТЬ АККАУНТ
+              </Button>
+
+              <div className="text-center">
+                <button
+                  onClick={() => setShowRegister(false)}
+                  className="text-minecraftPurple hover:text-purple-400 text-sm underline"
+                >
+                  Уже есть аккаунт? Войти
+                </button>
+              </div>
+            </div>
+          )}
+        </Card>
+
+        <div className="mt-8 text-white/80 text-sm text-center">
+          <p>Сайт: MINECRAFT CLICKER</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!gameStarted) {
     return (
@@ -471,6 +744,15 @@ export default function Index() {
               </TabsContent>
 
               <TabsContent value="inventory" className="space-y-2 max-h-96 overflow-y-auto">
+                {Object.entries(inventory).length > 0 && (
+                  <Button
+                    onClick={sellAllInventory}
+                    className="w-full bg-minecraftRed hover:bg-red-700 text-white font-bold mb-3"
+                  >
+                    💰 Продать весь инвентарь (50% от стоимости)
+                  </Button>
+                )}
+                
                 {Object.entries(inventory).length === 0 ? (
                   <div className="text-white/60 text-center py-8">
                     Инвентарь пуст
@@ -648,6 +930,20 @@ export default function Index() {
                   
                   <div className="space-y-3">
                     <Card className="bg-card/50 p-3">
+                      <div className="text-white font-bold mb-2">Email аккаунта</div>
+                      <input 
+                        type="email" 
+                        value={adminGiveEmail}
+                        onChange={(e) => setAdminGiveEmail(e.target.value)}
+                        placeholder="Оставьте пустым для себя"
+                        className="w-full bg-brown/50 text-white px-2 py-1 rounded border border-gold mb-2"
+                      />
+                      <div className="text-xs text-white/60">
+                        Если не указан - выдаст себе. Укажите email игрока для выдачи ему.
+                      </div>
+                    </Card>
+
+                    <Card className="bg-card/50 p-3">
                       <div className="text-white font-bold mb-2">Выдать монеты</div>
                       <div className="flex gap-2">
                         <input 
@@ -771,11 +1067,18 @@ export default function Index() {
               >
                 👥 Пригласить друга
               </Button>
+              <Button 
+                onClick={handleLogout}
+                className="bg-brown hover:bg-yellow-900 text-white font-bold border-2 border-gold"
+              >
+                🚪 Выход
+              </Button>
             </div>
             
             <div className="text-xs text-white/60 pt-2 border-t border-white/20">
               <div>Владелец сайта: KosmoCat (Никита)</div>
               <div>ТГ: @av7272g • Привилегия: {currentPrivilege}</div>
+              <div>Аккаунт: {currentEmail}</div>
             </div>
           </div>
         </Card>
@@ -789,12 +1092,12 @@ export default function Index() {
               
               <div className="space-y-4">
                 <div>
-                  <label className="text-white text-sm block mb-1">Логин</label>
+                  <label className="text-white text-sm block mb-1">Email</label>
                   <input 
-                    type="text" 
+                    type="email" 
                     value={adminLogin}
                     onChange={(e) => setAdminLogin(e.target.value)}
-                    placeholder="Введите логин"
+                    placeholder="admin@gmail.com"
                     className="w-full bg-brown/50 text-white px-3 py-2 rounded border-2 border-gold"
                   />
                 </div>
@@ -831,7 +1134,7 @@ export default function Index() {
               </div>
               
               <div className="text-white/60 text-xs mt-4">
-                Логин и пароль: KosmoCat
+                Email: admin@gmail.com • Пароль: KosmoCat
               </div>
             </div>
           </Card>
