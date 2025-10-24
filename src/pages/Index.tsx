@@ -43,12 +43,9 @@ const DONAT_CASES = [
 ];
 
 const generateRandomNickname = () => {
-  const prefixes = ['Pro', 'Epic', 'Mega', 'Super', 'Ultra', 'Dark', 'Shadow', 'Gold', 'Diamond', 'Fire'];
-  const suffixes = ['Gamer', 'Player', 'Master', 'King', 'Legend', 'Hero', 'Warrior', 'Hunter', 'Killer', 'Pro'];
-  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-  const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
-  const number = Math.floor(Math.random() * 9999);
-  return `${prefix}${suffix}${number}`;
+  const number = Math.floor(Math.random() * 10000);
+  const paddedNumber = number.toString().padStart(4, '0');
+  return `Player${paddedNumber}`;
 };
 
 interface UserAccount {
