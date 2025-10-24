@@ -48,6 +48,13 @@ const generateRandomNickname = () => {
   return `Player${paddedNumber}`;
 };
 
+interface Business {
+  id: string;
+  name: string;
+  price: number;
+  income: number;
+}
+
 interface UserAccount {
   email: string;
   password: string;
@@ -59,7 +66,20 @@ interface UserAccount {
   privilege: string;
   cases: number;
   donatCases: number;
+  ownedWeapon: string | null;
+  businesses: string[];
+  autoClicker: boolean;
+  autoClickerExpiry: number;
+  lastDailyReward: string;
 }
+
+const BUSINESSES: Business[] = [
+  { id: 'lemonade', name: '🍋 Лимонадный киоск', price: 50000, income: 100 },
+  { id: 'cafe', name: '☕ Кафе', price: 500000, income: 1000 },
+  { id: 'restaurant', name: '🍽️ Ресторан', price: 5000000, income: 10000 },
+  { id: 'factory', name: '🏭 Фабрика', price: 50000000, income: 100000 },
+  { id: 'bank', name: '🏦 Банк', price: 500000000, income: 1000000 },
+];
 
 const loadGameState = (email: string): UserAccount | null => {
   const saved = localStorage.getItem(`minecraft_clicker_${email}`);
@@ -115,6 +135,10 @@ export default function Index() {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [marketItems, setMarketItems] = useState<Array<{id: string; itemId: string; itemName: string; price: number; seller: string}>>([]);
   const [adminGiveEmail, setAdminGiveEmail] = useState('');
+  const [businesses, setBusinesses] = useState<string[]>([]);
+  const [autoClicker, setAutoClicker] = useState(false);
+  const [autoClickerExpiry, setAutoClickerExpiry] = useState(0);
+  const [lastDailyReward, setLastDailyReward] = useState('');
 
   useEffect(() => {
     const wood = inventory['wood-sword'] || 0;
@@ -138,11 +162,16 @@ export default function Index() {
         inventory,
         privilege: currentPrivilege,
         cases,
-        donatCases
+        donatCases,
+        ownedWeapon: Object.keys(inventory).find(key => WEAPONS.some(w => w.id === key)) || null,
+        businesses,
+        autoClicker,
+        autoClickerExpiry,
+        lastDailyReward
       };
       saveGameState(currentEmail, state);
     }
-  }, [isLoggedIn, currentEmail, nickname, coins, donatCoins, clicks, inventory, currentPrivilege, cases, donatCases]);
+  }, [isLoggedIn, currentEmail, nickname, coins, donatCoins, clicks, inventory, currentPrivilege, cases, donatCases, businesses, autoClicker, autoClickerExpiry, lastDailyReward]);
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!canClick) return;
@@ -169,6 +198,21 @@ export default function Index() {
     const price = item.price;
     const balance = currency === 'coins' ? coins : donatCoins;
     
+    if (item.type === 'weapon') {
+      const hasWeapon = Object.keys(inventory).some(key => WEAPONS.some(w => w.id === key && inventory[key] > 0));
+      if (hasWeapon) {
+        toast.error('У вас уже есть меч! Можно купить только один.');
+        return;
+      }
+    }
+    
+    if (item.type === 'privilege') {
+      if (inventory[item.id] && inventory[item.id] > 0) {
+        toast.error('У вас уже есть эта привилегия!');
+        return;
+      }
+    }
+    
     if (balance < price) {
       toast.error('Недостаточно средств!');
       return;
@@ -182,7 +226,7 @@ export default function Index() {
     
     setInventory(prev => ({
       ...prev,
-      [item.id]: (prev[item.id] || 0) + 1
+      [item.id]: 1
     }));
     
     if (item.type === 'privilege') {
@@ -306,6 +350,10 @@ export default function Index() {
       setCurrentPrivilege(account.privilege);
       setCases(account.cases);
       setDonatCases(account.donatCases);
+      setBusinesses(account.businesses || []);
+      setAutoClicker(account.autoClicker || false);
+      setAutoClickerExpiry(account.autoClickerExpiry || 0);
+      setLastDailyReward(account.lastDailyReward || '');
       toast.success('Вход выполнен!');
     } else {
       toast.error('Неверный email или пароль!');
@@ -329,7 +377,12 @@ export default function Index() {
       inventory: {},
       privilege: 'Выживший',
       cases: 0,
-      donatCases: 0
+      donatCases: 0,
+      ownedWeapon: null,
+      businesses: [],
+      autoClicker: false,
+      autoClickerExpiry: 0,
+      lastDailyReward: ''
     };
 
     saveAccount(newAccount);
@@ -485,6 +538,94 @@ export default function Index() {
     toast.success(`Продано все предметы за ${totalEarned.toLocaleString()} 💰!`);
   };
 
+  const buyBusiness = (business: Business) => {
+    if (businesses.includes(business.id)) {
+      toast.error('У вас уже есть этот бизнес!');
+      return;
+    }
+
+    if (coins < business.price) {
+      toast.error('Недостаточно монет!');
+      return;
+    }
+
+    setCoins(prev => prev - business.price);
+    setBusinesses(prev => [...prev, business.id]);
+    toast.success(`Куплен бизнес: ${business.name}!`);
+  };
+
+  const buyAutoClicker = () => {
+    if (donatCoins < 50) {
+      toast.error('Нужно 50 💎 доната!');
+      return;
+    }
+
+    setDonatCoins(prev => prev - 50);
+    setAutoClicker(true);
+    setAutoClickerExpiry(Date.now() + 10 * 60 * 1000);
+    toast.success('Автокликер активирован на 10 минут!');
+  };
+
+  const claimDailyReward = () => {
+    const today = new Date().toDateString();
+    if (lastDailyReward === today) {
+      toast.error('Вы уже получили награду сегодня!');
+      return;
+    }
+
+    const reward = 10000;
+    setCoins(prev => prev + reward);
+    setLastDailyReward(today);
+    toast.success(`Получена ежедневная награда: ${reward.toLocaleString()} 💰!`);
+  };
+
+  useEffect(() => {
+    if (!autoClicker) return;
+
+    const now = Date.now();
+    if (now > autoClickerExpiry) {
+      setAutoClicker(false);
+      toast.info('Автокликер истёк!');
+      return;
+    }
+
+    const interval = setInterval(() => {
+      if (Date.now() > autoClickerExpiry) {
+        setAutoClicker(false);
+        toast.info('Автокликер истёк!');
+        clearInterval(interval);
+        return;
+      }
+
+      const randomCoins = Math.floor(Math.random() * 2000) + 1;
+      const earned = randomCoins * clickMultiplier;
+      setCoins(prev => prev + earned);
+      setClicks(prev => prev + 1);
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [autoClicker, autoClickerExpiry, clickMultiplier]);
+
+  useEffect(() => {
+    if (businesses.length === 0) return;
+
+    const interval = setInterval(() => {
+      let totalIncome = 0;
+      businesses.forEach(businessId => {
+        const business = BUSINESSES.find(b => b.id === businessId);
+        if (business) {
+          totalIncome += business.income;
+        }
+      });
+      
+      if (totalIncome > 0) {
+        setCoins(prev => prev + totalIncome);
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [businesses]);"}
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-green-900 via-green-800 to-green-900 p-4">
@@ -609,12 +750,22 @@ export default function Index() {
           <span className="text-minecraftPurple">R</span>
         </h1>
         
-        <Button 
-          onClick={() => setGameStarted(true)}
-          className="bg-gold hover:bg-yellow-600 text-brown font-bold text-2xl px-12 py-8 border-4 border-brown shadow-lg hover:scale-105 transition-transform"
-        >
-          ⚡ ИГРАТЬ 💰
-        </Button>
+        <div className="space-y-4">
+          <Button 
+            onClick={() => setGameStarted(true)}
+            className="bg-gold hover:bg-yellow-600 text-brown font-bold text-2xl px-12 py-8 border-4 border-brown shadow-lg hover:scale-105 transition-transform"
+          >
+            ⚡ ИГРАТЬ 💰
+          </Button>
+
+          <Button 
+            onClick={claimDailyReward}
+            disabled={lastDailyReward === new Date().toDateString()}
+            className="bg-minecraftGreen hover:bg-green-700 text-white font-bold text-lg px-8 py-4 border-4 border-green-900 disabled:opacity-50"
+          >
+            🎁 Ежедневная награда (10,000 💰)
+          </Button>
+        </div>
         
         <div className="mt-8 text-white/80 text-sm">
           <p>Сайт: MINECRAFT CLICKER</p>
@@ -683,12 +834,17 @@ export default function Index() {
               <div className="mt-2 text-gold font-bold">
                 Сила удара: x{clickMultiplier}
               </div>
+              {autoClicker && (
+                <div className="mt-2 text-minecraftGreen font-bold animate-pulse">
+                  ⚡ Автокликер активен
+                </div>
+              )}
             </div>
           </Card>
 
           <Card className="bg-brown/90 border-4 border-darkBrown p-6">
             <Tabs defaultValue="weapons">
-              <TabsList className="w-full bg-darkBrown mb-4 grid grid-cols-4 md:grid-cols-8 text-xs">
+              <TabsList className="w-full bg-darkBrown mb-4 grid grid-cols-5 md:grid-cols-10 text-xs">
                 <TabsTrigger value="weapons">⚔️</TabsTrigger>
                 <TabsTrigger value="privileges">👑</TabsTrigger>
                 <TabsTrigger value="inventory">🎒</TabsTrigger>
@@ -696,6 +852,8 @@ export default function Index() {
                 <TabsTrigger value="cases">📦</TabsTrigger>
                 <TabsTrigger value="donat">💎</TabsTrigger>
                 <TabsTrigger value="market">🏪</TabsTrigger>
+                <TabsTrigger value="business">🏢</TabsTrigger>
+                <TabsTrigger value="autoclicker">⚡</TabsTrigger>
                 {isAdmin && <TabsTrigger value="admin">🔧</TabsTrigger>}
               </TabsList>
 
@@ -921,6 +1079,77 @@ export default function Index() {
                 </div>
               </TabsContent>
 
+              <TabsContent value="business" className="space-y-4">
+                <div className="text-center text-gold font-bold text-xl mb-4">🏢 БИЗНЕСЫ 🏢</div>
+                
+                <div className="text-white text-sm mb-4 text-center">
+                  Доход каждые 10 секунд автоматически
+                </div>
+
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {BUSINESSES.map(business => (
+                    <Card key={business.id} className="bg-card/50 p-3 flex items-center justify-between">
+                      <div className="text-white">
+                        <div className="font-bold">{business.name}</div>
+                        <div className="text-sm text-gold">{business.price.toLocaleString()} 💰</div>
+                        <div className="text-xs text-minecraftGreen">+{business.income.toLocaleString()} 💰 каждые 10 сек</div>
+                      </div>
+                      <Button
+                        onClick={() => buyBusiness(business)}
+                        disabled={coins < business.price || businesses.includes(business.id)}
+                        className="bg-minecraftGreen hover:bg-green-700 text-white font-bold"
+                      >
+                        {businesses.includes(business.id) ? '✓ Куплен' : 'Купить'}
+                      </Button>
+                    </Card>
+                  ))}
+                </div>
+
+                {businesses.length > 0 && (
+                  <div className="text-white text-center mt-4">
+                    <div className="text-gold font-bold">Ваши бизнесы:</div>
+                    <div className="text-sm">
+                      Общий доход: +{businesses.reduce((sum, id) => {
+                        const b = BUSINESSES.find(x => x.id === id);
+                        return sum + (b?.income || 0);
+                      }, 0).toLocaleString()} 💰 каждые 10 сек
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="autoclicker" className="space-y-4">
+                <div className="text-center text-minecraftPurple font-bold text-xl mb-4">⚡ АВТОКЛИКЕР ⚡</div>
+                
+                <Card className="bg-card/50 p-6 text-center">
+                  <div className="text-white mb-4">
+                    <div className="text-lg font-bold">Автоматические клики</div>
+                    <div className="text-sm text-white/60 mt-2">КД: 2 секунды</div>
+                    <div className="text-sm text-white/60">Длительность: 10 минут</div>
+                    <div className="text-sm text-white/60">Стоимость: 50 💎 доната</div>
+                  </div>
+
+                  {autoClicker ? (
+                    <div className="space-y-3">
+                      <div className="text-minecraftGreen font-bold text-lg">
+                        ✅ АКТИВЕН
+                      </div>
+                      <div className="text-white/80 text-sm">
+                        Осталось: {Math.ceil((autoClickerExpiry - Date.now()) / 1000 / 60)} мин
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={buyAutoClicker}
+                      disabled={donatCoins < 50}
+                      className="bg-minecraftPurple hover:bg-purple-700 text-white font-bold text-lg px-8 py-6"
+                    >
+                      Купить за 50 💎
+                    </Button>
+                  )}
+                </Card>
+              </TabsContent>
+
               {isAdmin && (
                 <TabsContent value="admin" className="space-y-4">
                   <div className="text-center text-minecraftRed font-bold text-xl mb-4">🔧 АДМИН ПАНЕЛЬ 🔧</div>
@@ -1130,9 +1359,15 @@ export default function Index() {
                 </div>
               </div>
               
-              <div className="text-white/60 text-xs mt-4">
-                Email: admin@gmail.com • Пароль: KosmoCat
-              </div>
+              <details className="mt-4">
+                <summary className="text-white/60 text-xs cursor-pointer hover:text-white">
+                  Показать данные для входа
+                </summary>
+                <div className="text-white/80 text-xs mt-2 bg-brown/50 p-2 rounded">
+                  Email: admin@gmail.com<br/>
+                  Пароль: KosmoCat
+                </div>
+              </details>
             </div>
           </Card>
         </div>
