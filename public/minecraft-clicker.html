@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MINECRAFT CLICKER</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a472a 0%, #2d5016 100%);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .subscribe-screen, .start-screen {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .rainbow-title {
+            font-size: 4rem;
+            font-weight: 900;
+            margin-bottom: 40px;
+            text-align: center;
+            letter-spacing: 3px;
+        }
+
+        .btn {
+            font-size: 1.5rem;
+            font-weight: 700;
+            padding: 20px 50px;
+            cursor: pointer;
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #333;
+        }
+
+        .btn-green {
+            background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .game-screen {
+            padding: 20px;
+        }
+
+        .game-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+        }
+
+        .scoreboard {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .scoreboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+
+        .zombie-area {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .zombie {
+            font-size: 10rem;
+            margin-bottom: 20px;
+        }
+
+        .click-btn {
+            font-size: 1.8rem;
+            font-weight: 700;
+            padding: 20px 60px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            border: none;
+            border-radius: 50px;
+            color: #333;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .tab.active {
+            background: #ffd700;
+            color: #333;
+        }
+
+        .content {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px;
+            padding: 30px;
+            color: #fff;
+            min-height: 300px;
+        }
+
+        .content h2 {
+            margin-bottom: 20px;
+            color: #ffd700;
+        }
+
+        .items-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .item-btn {
+            padding: 15px;
+            cursor: pointer;
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            color: #fff;
+            font-weight: 600;
+            text-align: left;
+        }
+
+        .privilege-btn {
+            background: #444;
+        }
+
+        .privilege-btn.active {
+            background: #00ff00;
+        }
+
+        .shop-btn {
+            background: #8B4513;
+        }
+
+        .donate-btn {
+            background: #9400d3;
+        }
+
+        .casino-btn {
+            background: #dc143c;
+        }
+
+        .autoclicker-btn {
+            background: #ff4500;
+        }
+
+        .invite-btn {
+            background: #0088cc;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+        }
+
+        .admin-btn {
+            background: #ff4500;
+            padding: 15px 30px;
+        }
+
+        .inventory-item {
+            padding: 10px;
+            background: #444;
+            border-radius: 8px;
+            border: 1px solid #ffd700;
+        }
+
+        input {
+            padding: 10px;
+            margin-bottom: 10px;
+            width: 100%;
+            border-radius: 8px;
+            border: none;
+            font-size: 1rem;
+        }
+
+        .login-btn {
+            padding: 12px 30px;
+            cursor: pointer;
+            background: #00ff00;
+            border: none;
+            border-radius: 8px;
+            color: #000;
+            font-weight: 600;
+        }
+
+        .admin-controls {
+            display: grid;
+            gap: 10px;
+        }
+
+        .admin-control-btn {
+            padding: 12px;
+            cursor: pointer;
+            background: #444;
+            border: 1px solid #ffd700;
+            border-radius: 8px;
+            color: #fff;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px;
+            color: #fff;
+            text-align: center;
+        }
+
+        .footer h3 {
+            margin-bottom: 15px;
+            color: #ffd700;
+        }
+
+        .stats-grid {
+            display: grid;
+            gap: 15px;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Экран подписки -->
+    <div id="subscribeScreen" class="subscribe-screen">
+        <h1 style="font-size: 3rem; font-weight: 800; color: #fff; margin-bottom: 40px; text-align: center;">
+            💎 ПОДПИШИСЬ НА НАШ КАНАЛ
+        </h1>
+        <button class="btn btn-gold" onclick="subscribe()">
+            📱 ПОДПИСАТЬСЯ
+        </button>
+    </div>
+
+    <!-- Стартовый экран -->
+    <div id="startScreen" class="start-screen hidden">
+        <h1 class="rainbow-title">
+            <span style="color: #ff0000">M</span>
+            <span style="color: #ff7f00">I</span>
+            <span style="color: #ffff00">N</span>
+            <span style="color: #00ff00">E</span>
+            <span style="color: #0000ff">C</span>
+            <span style="color: #4b0082">R</span>
+            <span style="color: #9400d3">A</span>
+            <span style="color: #ff0000">F</span>
+            <span style="color: #ff7f00">T</span>
+            <span style="color: #ffd700"> CLICKER</span>
+        </h1>
+        <button class="btn btn-green" onclick="startGame()">
+            🎮 ИГРАТЬ
+        </button>
+    </div>
+
+    <!-- Игровой экран -->
+    <div id="gameScreen" class="game-screen hidden">
+        <h1 class="game-title">
+            <span style="color: #ff0000">M</span>
+            <span style="color: #ff7f00">I</span>
+            <span style="color: #ffff00">N</span>
+            <span style="color: #00ff00">E</span>
+            <span style="color: #0000ff">C</span>
+            <span style="color: #4b0082">R</span>
+            <span style="color: #9400d3">A</span>
+            <span style="color: #ff0000">F</span>
+            <span style="color: #ff7f00">T</span>
+            <span style="color: #ffd700"> CLICKER</span>
+        </h1>
+
+        <!-- Скорборд -->
+        <div class="scoreboard">
+            <div class="scoreboard-grid">
+                <div>👤 <strong>Никнейм:</strong> <span id="nickname">Игрок</span></div>
+                <div>🛡️ <strong>Клан:</strong> <span id="clan">Нет</span></div>
+                <div>💰 <strong>Баланс:</strong> <span id="coins">0</span></div>
+                <div>💎 <strong>Донат:</strong> <span id="donate">0</span></div>
+                <div>🖱️ <strong>Кликов:</strong> <span id="clicks">0</span></div>
+            </div>
+        </div>
+
+        <!-- Зомби и кнопка -->
+        <div class="zombie-area">
+            <div class="zombie">🧟</div>
+            <button class="click-btn" onclick="hit()">⚡Клик💰</button>
+        </div>
+
+        <!-- Вкладки -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('game')">🎮 Игра</button>
+            <button class="tab" onclick="switchTab('privileges')">👑 Привилегии</button>
+            <button class="tab" onclick="switchTab('shop')">🛒 Магазин</button>
+            <button class="tab" onclick="switchTab('donate')">💎 Донат</button>
+            <button class="tab" onclick="switchTab('casino')">🎰 Казино</button>
+            <button class="tab" onclick="switchTab('inventory')">🎒 Инвентарь</button>
+            <button class="tab" onclick="switchTab('stats')">📊 Статистика</button>
+            <button class="tab" onclick="switchTab('invite')">📢 Пригласить</button>
+            <button class="tab" onclick="switchTab('admin')">⚙️ Админ</button>
+        </div>
+
+        <!-- Контент -->
+        <div class="content">
+            <div id="tab-game">
+                <h2>🎮 Игра</h2>
+                <p>Бей зомби и зарабатывай монеты! Каждый удар = 1 монета 💰</p>
+            </div>
+
+            <div id="tab-privileges" class="hidden">
+                <h2>👑 Привилегии</h2>
+                <div style="color: #00ff00; margin-bottom: 20px;">Текущая: <span id="currentPrivilege">Выживший</span></div>
+                <div class="items-grid" id="privilegesList"></div>
+            </div>
+
+            <div id="tab-shop" class="hidden">
+                <h2>🛒 Магазин предметов</h2>
+                <div class="items-grid" id="shopList"></div>
+            </div>
+
+            <div id="tab-donate" class="hidden">
+                <h2>💎 Донат магазин</h2>
+                <div class="items-grid" id="donateList"></div>
+            </div>
+
+            <div id="tab-casino" class="hidden">
+                <h2>🎰 Казино</h2>
+                <p style="margin-bottom: 20px;">Шанс выигрыша 50%. Выигрыш x2</p>
+                <div class="items-grid" id="casinoList"></div>
+            </div>
+
+            <div id="tab-inventory" class="hidden">
+                <h2>🎒 Инвентарь</h2>
+                <p style="margin-bottom: 15px;">Предметов: <span id="inventoryCount">0</span></p>
+                <div class="items-grid" id="inventoryList"></div>
+            </div>
+
+            <div id="tab-stats" class="hidden">
+                <h2>📊 Статистика</h2>
+                <div class="stats-grid">
+                    <div>⏱️ Время на сайте: <span id="timeOnSite">0ч 0м 0с</span></div>
+                    <div>👥 Приглашено друзей: <span id="friendsInvited">0</span></div>
+                    <div>💰 Заработано всего монет: <span id="totalEarned">0</span></div>
+                    <div>🎁 Открытие кейсов: <span id="casesOpened">0</span></div>
+                    <div>🎒 Предметов в инвентаре: <span id="inventoryTotal">0</span></div>
+                </div>
+            </div>
+
+            <div id="tab-invite" class="hidden">
+                <h2>📢 Пригласить друга</h2>
+                <p style="margin-bottom: 15px;">Поделись ссылкой с друзьями!</p>
+                <button class="item-btn invite-btn" onclick="inviteFriend()">
+                    📱 Пригласить через Telegram
+                </button>
+            </div>
+
+            <div id="tab-admin" class="hidden">
+                <h2>⚙️ Админ панель</h2>
+                <div id="adminLogin">
+                    <button class="item-btn admin-btn" onclick="showAdminLogin()">
+                        🔐 Войти в админ панель
+                    </button>
+                </div>
+                <div id="adminLoginForm" class="hidden">
+                    <input type="text" id="adminLoginInput" placeholder="Логин">
+                    <input type="password" id="adminPasswordInput" placeholder="Пароль">
+                    <button class="login-btn" onclick="adminLogin()">Войти</button>
+                </div>
+                <div id="adminPanel" class="hidden">
+                    <p style="color: #00ff00; margin-bottom: 20px;">✅ Вы вошли как администратор</p>
+                    <div class="admin-controls">
+                        <button class="admin-control-btn" onclick="addCoins()">💰 Добавить монеты</button>
+                        <button class="admin-control-btn" onclick="addDonate()">💎 Добавить донат</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Футер -->
+        <div class="footer">
+            <h3>Наши соц.сети</h3>
+            <div style="margin-bottom: 15px;">
+                Тг: @av7272g | YT: нет | DS: нет
+            </div>
+            <div style="font-size: 0.9rem; color: #aaa;">
+                Владелец сайта: KosmoCat (Никита)
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Данные игры
+        let gameData = {
+            nickname: 'Игрок',
+            clan: 'Нет',
+            coins: 0,
+            donateBalance: 0,
+            clicks: 0,
+            timeOnSite: 0,
+            friendsInvited: 0,
+            totalEarned: 0,
+            casesOpened: 0,
+            privilege: 'Выживший',
+            inventory: [],
+            isAdmin: false
+        };
+
+        // Привилегии
+        const privileges = [
+            { name: 'Выживший', price: 0 },
+            { name: 'Профессионал', price: 100 },
+            { name: 'БедВарсер', price: 123 },
+            { name: 'Хакер', price: 345 },
+            { name: 'Читер', price: 567 },
+            { name: 'Гидра', price: 1239 },
+            { name: 'Бог', price: 12383 }
+        ];
+
+        // Магазин
+        const shopItems = [
+            { name: 'Деревянный меч', price: 0 },
+            { name: 'Железный меч', price: 10000 },
+            { name: 'Незеритовый меч', price: 100000 },
+            { name: 'Меч Бога с силой х5', price: 34000000 }
+        ];
+
+        // Кейсы
+        const casePacks = [
+            { count: 1, price: 500 },
+            { count: 3, price: 1500 },
+            { count: 5, price: 2000 },
+            { count: 10, price: 4500 }
+        ];
+
+        // Ставки казино
+        const casinoBets = [10000, 50000, 100000, 1000000, 10000000];
+
+        // Загрузка данных
+        function loadGame() {
+            const saved = localStorage.getItem('minecraftClicker');
+            if (saved) {
+                gameData = JSON.parse(saved);
+            }
+            updateUI();
+        }
+
+        // Сохранение данных
+        function saveGame() {
+            localStorage.setItem('minecraftClicker', JSON.stringify(gameData));
+        }
+
+        // Обновление UI
+        function updateUI() {
+            document.getElementById('nickname').textContent = gameData.nickname;
+            document.getElementById('clan').textContent = gameData.clan;
+            document.getElementById('coins').textContent = gameData.coins.toLocaleString();
+            document.getElementById('donate').textContent = gameData.donateBalance.toLocaleString();
+            document.getElementById('clicks').textContent = gameData.clicks.toLocaleString();
+            document.getElementById('currentPrivilege').textContent = gameData.privilege;
+            document.getElementById('inventoryCount').textContent = gameData.inventory.length;
+            document.getElementById('inventoryTotal').textContent = gameData.inventory.length;
+            document.getElementById('totalEarned').textContent = gameData.totalEarned.toLocaleString();
+            document.getElementById('casesOpened').textContent = gameData.casesOpened;
+            
+            const hours = Math.floor(gameData.timeOnSite / 3600);
+            const minutes = Math.floor((gameData.timeOnSite % 3600) / 60);
+            const seconds = gameData.timeOnSite % 60;
+            document.getElementById('timeOnSite').textContent = `${hours}ч ${minutes}м ${seconds}с`;
+        }
+
+        // Подписка
+        function subscribe() {
+            window.open('https://t.me/av7272g', '_blank');
+            document.getElementById('subscribeScreen').classList.add('hidden');
+            document.getElementById('startScreen').classList.remove('hidden');
+        }
+
+        // Старт игры
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            loadGame();
+            renderPrivileges();
+            renderShop();
+            renderDonate();
+            renderCasino();
+            renderInventory();
+            startTimer();
+        }
+
+        // Таймер
+        function startTimer() {
+            setInterval(() => {
+                gameData.timeOnSite++;
+                updateUI();
+                saveGame();
+            }, 1000);
+        }
+
+        // Удар
+        function hit() {
+            gameData.coins++;
+            gameData.clicks++;
+            gameData.totalEarned++;
+            updateUI();
+            saveGame();
+        }
+
+        // Переключение вкладок
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.querySelectorAll('[id^="tab-"]').forEach(t => t.classList.add('hidden'));
+            document.getElementById('tab-' + tabName).classList.remove('hidden');
+        }
+
+        // Рендер привилегий
+        function renderPrivileges() {
+            const list = document.getElementById('privilegesList');
+            list.innerHTML = privileges.map(p => `
+                <button class="item-btn privilege-btn ${gameData.privilege === p.name ? 'active' : ''}" 
+                        onclick="buyPrivilege('${p.name}', ${p.price})">
+                    ${p.name} - ${p.price === 0 ? 'Бесплатно' : p.price + ' 💎'}
+                </button>
+            `).join('');
+        }
+
+        // Покупка привилегии
+        function buyPrivilege(name, price) {
+            if (gameData.donateBalance >= price) {
+                gameData.donateBalance -= price;
+                gameData.privilege = name;
+                alert(`✅ Привилегия "${name}" куплена!`);
+                updateUI();
+                saveGame();
+                renderPrivileges();
+            } else {
+                alert('❌ Недостаточно доната!');
+            }
+        }
+
+        // Рендер магазина
+        function renderShop() {
+            const list = document.getElementById('shopList');
+            list.innerHTML = shopItems.map(item => `
+                <button class="item-btn shop-btn" onclick="buyItem('${item.name}', ${item.price})">
+                    ${item.name} - ${item.price === 0 ? 'Бесплатно' : item.price.toLocaleString() + ' 💰'}
+                </button>
+            `).join('');
+        }
+
+        // Покупка предмета
+        function buyItem(name, price) {
+            if (gameData.coins >= price) {
+                gameData.coins -= price;
+                gameData.inventory.push(name);
+                alert(`✅ Куплено: ${name}`);
+                updateUI();
+                saveGame();
+                renderInventory();
+            } else {
+                alert('❌ Недостаточно монет!');
+            }
+        }
+
+        // Рендер доната
+        function renderDonate() {
+            const list = document.getElementById('donateList');
+            list.innerHTML = casePacks.map(pack => `
+                <button class="item-btn donate-btn" onclick="buyCase(${pack.count}, ${pack.price})">
+                    🎁 ${pack.count} кейс(ов) - ${pack.price} 💎
+                </button>
+            `).join('') + `
+                <button class="item-btn autoclicker-btn" onclick="activateAutoClicker()">
+                    ⚡ Автокликер (10 минут) - 50 💎
+                </button>
+            `;
+        }
+
+        // Покупка кейсов
+        function buyCase(count, price) {
+            if (gameData.donateBalance >= price) {
+                gameData.donateBalance -= price;
+                gameData.casesOpened += count;
+                
+                const items = ['Деревянный меч', 'Железный меч', 'Алмазный меч', 'Незеритовый меч'];
+                for (let i = 0; i < count; i++) {
+                    const randomItem = items[Math.floor(Math.random() * items.length)];
+                    gameData.inventory.push(randomItem);
+                }
+                
+                alert(`✅ Открыто ${count} кейсов!`);
+                updateUI();
+                saveGame();
+                renderInventory();
+            } else {
+                alert('❌ Недостаточно доната!');
+            }
+        }
+
+        // Автокликер
+        function activateAutoClicker() {
+            if (gameData.donateBalance >= 50) {
+                gameData.donateBalance -= 50;
+                alert('⚡ Автокликер активирован на 10 минут!');
+                updateUI();
+                saveGame();
+                
+                let counter = 0;
+                const interval = setInterval(() => {
+                    if (counter >= 600) {
+                        clearInterval(interval);
+                        alert('⚡ Автокликер закончился!');
+                    } else {
+                        gameData.coins++;
+                        gameData.clicks++;
+                        gameData.totalEarned++;
+                        updateUI();
+                        counter++;
+                    }
+                }, 1000);
+            } else {
+                alert('❌ Недостаточно доната!');
+            }
+        }
+
+        // Рендер казино
+        function renderCasino() {
+            const list = document.getElementById('casinoList');
+            list.innerHTML = casinoBets.map(bet => `
+                <button class="item-btn casino-btn" onclick="playCasino(${bet})">
+                    Ставка ${bet.toLocaleString()} 💰
+                </button>
+            `).join('');
+        }
+
+        // Казино
+        function playCasino(bet) {
+            if (gameData.coins >= bet) {
+                gameData.coins -= bet;
+                const win = Math.random() > 0.5;
+                
+                if (win) {
+                    const winAmount = bet * 2;
+                    gameData.coins += winAmount;
+                    gameData.totalEarned += bet;
+                    alert(`🎰 Выигрыш! +${winAmount.toLocaleString()} монет`);
+                } else {
+                    alert('🎰 Проигрыш!');
+                }
+                
+                updateUI();
+                saveGame();
+            } else {
+                alert('❌ Недостаточно монет!');
+            }
+        }
+
+        // Рендер инвентаря
+        function renderInventory() {
+            const list = document.getElementById('inventoryList');
+            if (gameData.inventory.length === 0) {
+                list.innerHTML = '<p>Пусто</p>';
+            } else {
+                list.innerHTML = gameData.inventory.map(item => `
+                    <div class="inventory-item">${item}</div>
+                `).join('');
+            }
+        }
+
+        // Приглашение
+        function inviteFriend() {
+            window.open('https://t.me/MINECRAFTCLICKERBOT', '_blank');
+        }
+
+        // Показать форму входа
+        function showAdminLogin() {
+            document.getElementById('adminLogin').classList.add('hidden');
+            document.getElementById('adminLoginForm').classList.remove('hidden');
+        }
+
+        // Вход в админку
+        function adminLogin() {
+            const login = document.getElementById('adminLoginInput').value;
+            const password = document.getElementById('adminPasswordInput').value;
+            
+            if (login === 'KosmoCat' && password === 'KosmoCat') {
+                gameData.isAdmin = true;
+                document.getElementById('adminLoginForm').classList.add('hidden');
+                document.getElementById('adminPanel').classList.remove('hidden');
+                alert('✅ Вход выполнен!');
+            } else {
+                alert('❌ Неверный логин или пароль!');
+            }
+        }
+
+        // Добавить монеты
+        function addCoins() {
+            const amount = prompt('Сколько монет добавить?');
+            if (amount) {
+                gameData.coins += parseInt(amount);
+                updateUI();
+                saveGame();
+            }
+        }
+
+        // Добавить донат
+        function addDonate() {
+            const amount = prompt('Сколько доната добавить?');
+            if (amount) {
+                gameData.donateBalance += parseInt(amount);
+                updateUI();
+                saveGame();
+            }
+        }
+    </script>
+</body>
+</html>
