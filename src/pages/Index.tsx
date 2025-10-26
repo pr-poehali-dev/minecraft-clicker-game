@@ -624,7 +624,7 @@ export default function Index() {
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [businesses]);"}
+  }, [businesses]);
 
   if (!isLoggedIn) {
     return (
